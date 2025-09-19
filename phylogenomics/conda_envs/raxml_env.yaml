@@ -1,0 +1,12 @@
+name: raxml_env
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1=conda_forge
+  - _openmp_mutex=4.5=2_gnu
+  - libgcc=14.2.0=h77fa898_1
+  - libgomp=14.2.0=h77fa898_1
+  - raxml=8.2.13=h7b50bb2_3
+prefix: /projects/beyo2625/miniforge3/envs/raxml_env
