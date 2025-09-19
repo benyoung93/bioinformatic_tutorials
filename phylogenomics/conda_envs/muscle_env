@@ -1,0 +1,13 @@
+name: muscle_env
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1=conda_forge
+  - _openmp_mutex=4.5=2_gnu
+  - libgcc=14.2.0=h767d61c_2
+  - libgomp=14.2.0=h767d61c_2
+  - libstdcxx=14.2.0=h8f9b012_2
+  - muscle=5.3=h4ac6f70_0
+prefix: /projects/beyo2625/miniforge3/envs/muscle_env
