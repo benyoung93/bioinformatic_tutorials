@@ -40,7 +40,7 @@ optional arguments:
 ```
 
 If doing the following  
-```
+```{bash}
 ./rename.py \
 --prefix fungi \
 protein_fastas \
@@ -62,7 +62,7 @@ For this tutorial I am running the pipeline on the following.
 
 In the tutorial, I will only give the commands for the SCO all, but will provide the ouputs of both to demonstrate programs. You will therfore see one command, but duplicated outputs. I have included my `slurm` scripts for this, but this will depend on the scheduling system you use, as well as account and partitions etc etc.  
 
-```
+```{bash}
 #!/bin/bash
 #SBATCH --time=24:00:00
 #SBATCH --qos=normal
