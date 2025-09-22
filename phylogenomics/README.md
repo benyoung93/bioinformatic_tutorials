@@ -53,7 +53,7 @@ modified_fastas \
 analysis_lists
 ```
 
-This will make a directory called `modified_fastas` with the renamed proteomes from the directory `protein_fastas`. The renamed proteomes will be `fungi01, fungi01 .... funginn`. It will also make an analysis directory to have all the mapping files and cleanup files produced.  
+This will make a directory called `modified_fastas` with the renamed proteomes from the directory `protein_fastas`. The renamed proteomes will be `fungi01, fungi01 .... funginn`. It will also make an analysis directory to have all the mapping files and cleanup files produced. One file produced is a mapping between the new name and the old proteome name. This is very useful for adding to a metadata file which you can then import into your tree visualisation program and specify your tip labels.  
 
 ## Step 2: Identyfying and Selecting Single Copy Orthologs
 
