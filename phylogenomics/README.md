@@ -2,6 +2,8 @@
 
 So this phylogenomic tutorial will be using proteomes. Namely, you have *n* input proteomes, and you want to identify single copy orthologs (SCOs) and generate a phyogenomic tree from them. In most cases, you should get a nice set of SCOs between your species (100-300). This can not be the case however. As such, this tutorial also shows you a case in if you want to identify SCOs in >x% of species (e.g. >95% of species) as this can greatly bump up you number of SCOs, and programs like `RAxML` still work well with gaps present. Obviously you do not want massive stretches of gaps, but when you run RAxML it will tell you the percentage of gaps, and anything <15% is pretty good. Okay let us proceed.  
 
+Quick side note, for the written programs in the `bin` directory, all you need to do is copy and paste these into terminal when in `nano`. You can then save them as a name, make them executable (`chmod +x [programname.py]`) and use them (`./[programname.py]`. The `./` is just saying that the executable is in the current working ddirectory, you can also hard path (`path/to/executable/[programname.py]` if you want. These programs also work without needing to load any environments or have specific tools present which is nice. 
+
 ## Step 1: Proteome Cleaning and Preperation
 
 So when downloading proteomes they can have  
