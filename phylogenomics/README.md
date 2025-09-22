@@ -171,19 +171,11 @@ proteinortho_grab_proteins.pl \
 -tofiles=/scratch/alpine/beyo2625/laboul_all/laboul_trees/auto_pipeline/sco_all \ ## path to the created directory to save SCO fastas
 prot_ortho/SCO_all.txt \ ## generated SCO_all.txt file specyfying which SCOs we want
 modified_fastas/*.fasta ## directory with the renamed proteomes
-
-## getting the 95% SCOs
-proteinortho_grab_proteins.pl \
--exact \
--cpus=10 \
--tofiles=/scratch/alpine/beyo2625/laboul_all/laboul_trees/auto_pipeline/sco_g95 \
-prot_ortho/SCO_great95.txt \
-modified_fastas/*.fasta
 ```
 
 If you then look in the `SCO_all` or `SCO_great95` they will have fasta files present, and the number of fasta files will equal rows - 1 in the .txt file specified.  
 
-## Step 2: Aligning SCOs
+## Step 3: Aligning SCOs
 
 The next step is to align all the sequences in each SCO with themselves. This uses `muscle` and is straightforward. The script below allows you to submit 1 file to the supercomputer, and then it submits a single job for each SCO that needs to be aligned.  
 
@@ -250,12 +242,12 @@ done
 
 This will then create the same number of fasta files as in the `SCO_all` directory, but they will be aligned. To run this for the `SCO_great95` you would just substitute paths in to the respective files for processing.  
 
-## Step 3. Trimming Samples
+## Step 4. Trimming Samples
 
 We want to clean the alignments we generated, and we will use `trimal` for this. This is a very quick and easy step so I will not go into this to much. Again, it will generate the same number of fasta files as in the `SCO_all` directory, and the `SCO_align_all` directory.  
 
 ```
-mamba activate trimal_env
+mamba activate trimal_env ## activate the trimal environment
 
 ## for all SCOs
 cd /scratch/alpine/beyo2625/laboul_all/laboul_trees/auto_pipeline/sco_align_all
@@ -270,4 +262,190 @@ trimal \
 -out sco_clean_all/"$PALPAL".trimmed \
 -gappyout
 done
+```
+
+## Step 5. Completing the Missing Species in SCOs
+
+If you are running true SCO (i.e. SCO_all as we are doing in this tutorial) you do not need to run this step. Saying that, how I have written the python programs allow this to be included and for ease of use you can include it.  
+
+So for SCO that do not have all species present (i.e. you are using >95% SCO and thus there will be SCOs with < the total number of species included) you need to coplete them or when you concatenate it will create different sequence lengths and cause super whacky trees generated using `RAxML`.  
+
+I wrote the python script `complete_missing_species.py` that will do this for you, and print the ouput saying for each SCO what species are added. For each SCO, it identifies the length of the sequence (which, after trimming will be the same for all the sequences in the file) and then adds ---- padding sequences for the missing species (as they have non alignment).  
+
+```
+./complete_missing_species.py --help
+usage: complete_missing_species.py [-h] --species_file SPECIES_FILE
+                                   --input_dir INPUT_DIR
+                                   [--input_ext INPUT_EXT] --output_dir
+                                   OUTPUT_DIR [--output_ext OUTPUT_EXT]
+                                   [--line_length LINE_LENGTH]
+                                   [--missing_report MISSING_REPORT]
+
+Fill missing species in orthogroup FASTA files with padded sequences.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --species_file SPECIES_FILE
+                        File with expected species list (lines like >species)
+  --input_dir INPUT_DIR
+                        Directory with cleaned orthogroup files
+  --input_ext INPUT_EXT
+                        Input file extension to select (default: .fa)
+  --output_dir OUTPUT_DIR
+                        Directory to write completed orthogroup files
+  --output_ext OUTPUT_EXT
+                        Output file extension (default: .fasta)
+  --line_length LINE_LENGTH
+                        Max characters per sequence line (default: 60)
+  --missing_report MISSING_REPORT
+                        Optional path to write a table of missing species per
+                        orthogroup
+```
+
+So here, we would run
+
+```
+cd /scratch/alpine/beyo2625/laboul_all/laboul_trees/auto_pipeline
+
+## for sco all (not needed but to show nothing made in the missing report)
+./complete_missing_species.py \
+--species_file analysis_lists/species_list.fa \
+--input_dir sco_clean_all \
+--input_ext .trimmed \
+--output_ext .comp \
+--output_dir sco_comp_all \
+--missing_report analysis_lists/sco_all_missing_species.txt
+```
+
+This gives the output of the following 
+
+```
+.....
+Processing SCOall.txt.OrthoGroup2.trimmed
+Processing SCOall.txt.OrthoGroup3.trimmed
+Processing SCOall.txt.OrthoGroup4.trimmed
+Processing SCOall.txt.OrthoGroup5.trimmed
+Processing SCOall.txt.OrthoGroup6.trimmed
+Processing SCOall.txt.OrthoGroup7.trimmed
+Processing SCOall.txt.OrthoGroup8.trimmed
+✅ Missing species report saved to analysis_lists/sco_all_missing_species.txt
+
+✅ All output files passed validation: correct species count and equal lengths.
+```
+
+As we used the SCO in all species, there is nothing to be completed, so yay.  
+
+But, if we had used SCO in >95% species, you would see something like this.  
+
+```
+.......
+Processing SCOgreat95.txt.OrthoGroup98.trimmed
+⚠️  Missing species in SCOgreat95.txt.OrthoGroup98.trimmed: fungi26
+⚠️  Missing species in SCOgreat95.txt.OrthoGroup98.trimmed: fungi44
+Processing SCOgreat95.txt.OrthoGroup99.trimmed
+⚠️  Missing species in SCOgreat95.txt.OrthoGroup99.trimmed: fungi26
+⚠️  Missing species in SCOgreat95.txt.OrthoGroup99.trimmed: fungi33
+✅ Missing species report saved to analysis_lists/sco_g95_missing.txt
+
+✅ All output files passed validation: correct species count and equal lengths.
+```
+
+So here you can see that for 
+* Orthogroup 98, padding sequences (i.e. ----) were added for fungi26 and fungi44
+* Orthogorup 99, padding sequences were added for fungi26 and fungi33
+
+After that, the script checks everything looks good, and you can see we got the ticks for those. If something is of, you get a X.  
+
+## Step 6. Concatenation of the SCOs
+
+The final step before tree generation is combining all the SCO for each species into one long sequence. I have again written a python script called `./combine_seqs.py` which does this for you, and runs some checks.  
+
+```
+./combine_seqs.py --help
+usage: combine_seqs.py [-h] --expected_file EXPECTED_FILE --output_file
+                       OUTPUT_FILE --ortholog_files ORTHOLOG_FILES
+                       [ORTHOLOG_FILES ...] [--line_length LINE_LENGTH]
+
+Concatenate ortholog FASTA files across species and validate sequence lengths.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --expected_file EXPECTED_FILE
+                        File with expected species list (lines like >species)
+  --output_file OUTPUT_FILE
+                        Path to write concatenated FASTA
+  --ortholog_files ORTHOLOG_FILES [ORTHOLOG_FILES ...]
+                        Ortholog FASTA files to concatenate
+  --line_length LINE_LENGTH
+                        Wrap FASTA sequences at this line length (0 = no
+                        wrapping)
+```
+
+So for the SCO all we using here, we would do the following. 
+
+```
+cd /scratch/alpine/beyo2625/laboul_all/laboul_trees/auto_pipeline
+./combine_seqs.py \
+--expected_file analysis_lists/species_list.fa \
+--output_file sco_all.fasta \
+--ortholog_files sco_comp_all/* \
+--line_length 60
+```
+
+And this gives the ouput 
+
+```
+✅ All species have the same concatenated length: 5164 bp
+
+Concatenated FASTA file created: sco_all.fasta
+```
+
+So we know for all the species, the sequence length is 5,164 base paris, and they are all the same length. Woop.  
+
+Again, just for an example, here is the ouput of SCO >95% species. 
+
+```
+✅ All species have the same concatenated length: 217065 bp
+
+Concatenated FASTA file created: sco_ag95.fasta
+```
+
+So you can see this one, instead of 5,164 bp in the SCO all, had a alignment length for each species of 217,065 bp. This is the power of using SCO > xx% of species, you can seriously up the sequence length that is used in `RAxML`. 
+
+## Step 7. RAxML Tree Generation
+
+So the final stage is to use your generated aligned and concatenated file in `RAxML`. I am not going to go into this one to much, but the below is the code I used to generate the trees for the SCO all. 
+
+```
+#!/bin/bash
+#SBATCH --time=168:00:00
+#SBATCH --qos=XXXXX
+#SBATCH --partition=XXXXX
+#SBATCH --account=XXXXX
+#SBATCH --nodes=1
+#SBATCH --mem=60G
+#SBATCH --job-name=raxml_100bs
+#SBATCH --error=/scratch/alpine/beyo2625/laboul_all/laboul_trees/auto_pipeline/raxml_all/raxml_100bs.err
+#SBATCH --output=/scratch/alpine/beyo2625/laboul_all/laboul_trees/auto_pipeline/raxml_all/raxml_100bs.out
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=XXXXX
+#SBATCH --ntasks=25
+#SBATCH --cpus-per-task=2
+
+module purge 
+eval "$(conda shell.bash hook)"
+conda activate raxml_env
+
+cd /scratch/alpine/beyo2625/laboul_all/laboul_trees/auto_pipeline/raxml_all
+
+raxmlHPC-PTHREADS-AVX2 \
+-f a \
+-s ../sco_all.fasta \
+-n autopipeline_scoall_100bs_root \
+-m PROTGAMMAAUTO \
+-x 8212 \
+-N 100 \
+-p 1176 \
+-T 50 \
+-o fungi29,fungi51 ## samples used as outgroups and rooting in RAxML. Not needed but I like to do. 
 ```
