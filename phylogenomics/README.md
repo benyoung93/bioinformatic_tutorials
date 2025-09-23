@@ -2,7 +2,9 @@
 
 So this phylogenomic tutorial will be using proteomes. Namely, you have *n* input proteomes, and you want to identify single copy orthologs (SCOs) and generate a phyogenomic tree from them. In most cases, you should get a nice set of SCOs between your species (100-300). This can not be the case however. As such, this tutorial also shows you a case in if you want to identify SCOs in >x% of species (e.g. >95% of species) as this can greatly bump up you number of SCOs, and programs like `RAxML` still work well with gaps present. Obviously you do not want massive stretches of gaps, but when you run RAxML it will tell you the percentage of gaps, and anything <15% is pretty good. Okay let us proceed.  
 
-Quick side note, for the written programs in the `bin` directory, all you need to do is copy and paste these into terminal when in `nano`. You can then save them as a name, make them executable (`chmod +x [programname.py]`) and use them (`./[programname.py]`. The `./` is just saying that the executable is in the current working ddirectory, you can also hard path (`path/to/executable/[programname.py]` if you want. These programs also work without needing to load any environments or have specific tools present which is nice. 
+Quick side note, for the written programs in the `bin` directory, all you need to do is copy and paste these into terminal when in `nano`. You can then save them as a name, make them executable (`chmod +x [programname.py]`) and use them (`./[programname.py]`. The `./` is just saying that the executable is in the current working ddirectory, you can also hard path (`path/to/executable/[programname.py]` if you want. These programs also work without needing to load any environments or have specific tools present which is nice.
+
+PUT IN STUFF ABOUT CONDA ENVS
 
 ## Step 1: Proteome Cleaning and Preperation
 
@@ -67,11 +69,13 @@ For this tutorial I am running the pipeline on the following.
 
 I will only give the commands for the SCO all, but will provide the ouputs fromthe >95% to demonstrate programs and how the outputs differ. You will therfore see one command, but duplicated outputs. I have included my `slurm` scripts for this, but you will need to use your own HPC cluster scheduling tool if running on different supercomputers. 
 
+For CU Boulder, this link goes to the RC Documentation for the flags - https://curc.readthedocs.io/en/latest/clusters/alpine/alpine-hardware.html
+
 ```{bash}
 #!/bin/bash
 #SBATCH --time=24:00:00
-#SBATCH --qos=normal
-#SBATCH --partition=amilan
+#SBATCH --qos=XXXXX
+#SBATCH --partition=XXXXX
 #SBATCH --account=XXXXX
 #SBATCH --nodes=1
 #SBATCH --mem=40G
@@ -79,7 +83,7 @@ I will only give the commands for the SCO all, but will provide the ouputs fromt
 #SBATCH --error=/scratch/alpine/beyo2625/laboul_all/laboul_trees/auto_pipeline/prot_ortho/protortho.err
 #SBATCH --output=/scratch/alpine/beyo2625/laboul_all/laboul_trees/auto_pipeline/prot_ortho/protortho.out
 #SBATCH --mail-type=ALL
-#SBATCH --mail-user=XXX
+#SBATCH --mail-user=XXXXX
 #SBATCH --ntasks=10
 #SBATCH --cpus-per-task=2
 
@@ -118,11 +122,28 @@ options:
 ```
 ```
 cd /scratch/alpine/beyo2625/laboul_all/laboul_trees/auto_pipeline
-./process_proteinortho.py \
+./sumarise_proteinortho.py \
 -e fasta \ ## the extension of the fasta files in the modified fasta directory
 -o prot_ortho \
 prot_ortho/auto_test_tree.proteinortho.tsv \
 modified_fastas
+```
+
+And the output will print to the terminal.  
+
+```
+✅ Found 69 input FASTA files
+100% (69 species): 9 SCOs written to prot_ortho/SCO_all.txt
+95% (≥66 species): 365 SCOs written to prot_ortho/SCO_great95.txt
+90% (≥63 species): 837 SCOs written to prot_ortho/SCO_great90.txt
+85% (≥59 species): 1337 SCOs written to prot_ortho/SCO_great85.txt
+80% (≥56 species): 1625 SCOs written to prot_ortho/SCO_great80.txt
+75% (≥52 species): 1987 SCOs written to prot_ortho/SCO_great75.txt
+70% (≥49 species): 2171 SCOs written to prot_ortho/SCO_great70.txt
+65% (≥45 species): 2410 SCOs written to prot_ortho/SCO_great65.txt
+60% (≥42 species): 2541 SCOs written to prot_ortho/SCO_great60.txt
+55% (≥38 species): 2691 SCOs written to prot_ortho/SCO_great55.txt
+50% (≥35 species): 2780 SCOs written to prot_ortho/SCO_great50.txt
 ```
 
 This writes all the results to the `prot_ortho` directory created when running `proteinortho`, and specifies the modified fasta files from `rename.py` as the input.  
@@ -141,6 +162,33 @@ sco_comp_all sco_comp_g95 \ ## making the directories for completed SCOs with al
 raxml_all raxml_g95 ## making the raxml files. 
 ```
 
+And then if we use the `tree` command we can see out directory layout.  
+
+```
+cd 
+tree -d ## only print directories
+.
+├── analysis_lists
+├── conda_envs
+├── loop_err_out
+├── modified_fastas
+├── protein_fastas
+├── prot_ortho
+├── raxml_all
+├── raxml_g95
+├── sco_align_all
+│   └── loop_err_out
+├── sco_align_g95
+│   └── loop_err_out
+├── sco_all
+├── sco_clean_all
+├── sco_clean_g95
+├── sco_comp_all
+├── sco_comp_g95
+└── sco_g95
+```
+
+
 Now we want to select SCO and generate fasta files with each SCO in it. We will use the `proteinortho_grab_proteins.pl` in the `proteinortho` environmnet to do this.  
 
 ```
@@ -151,9 +199,9 @@ Now we want to select SCO and generate fasta files with each SCO in it. We will 
 #SBATCH --account=XXXXX
 #SBATCH --nodes=1
 #SBATCH --mem=10G
-#SBATCH --job-name=grabprots_90perc
-#SBATCH --error=/scratch/alpine/beyo2625/laboul_all/laboul_trees/auto_pipeline/loop_err_out/grabprots.err
-#SBATCH --output=/scratch/alpine/beyo2625/laboul_all/laboul_trees/auto_pipeline/loop_err_out/grabprots.out
+#SBATCH --job-name=grabprots_all
+#SBATCH --error=/scratch/alpine/beyo2625/laboul_all/laboul_trees/auto_pipeline/sco_all/grabprots.err
+#SBATCH --output=/scratch/alpine/beyo2625/laboul_all/laboul_trees/auto_pipeline/sco_all/grabprots.out
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=XXXXX
 #SBATCH --ntasks=5
@@ -179,7 +227,7 @@ If you then look in the `SCO_all` or `SCO_great95` they will have fasta files pr
 
 ## Step 3: Aligning SCOs
 
-The next step is to align all the sequences in each SCO with themselves. This uses `muscle` and is straightforward. The script below allows you to submit 1 file to the supercomputer, and then it submits a single job for each SCO that needs to be aligned.  
+The next step is to align all the sequences in each SCO with themselves. This uses `muscle` and is straightforward. The script below allows you to submit 1 job to the supercomputer, and then it submits a single job for each SCO that needs to be aligned.  
 
 ```
 #!/bin/bash
@@ -196,13 +244,14 @@ The next step is to align all the sequences in each SCO with themselves. This us
 #SBATCH --mail-user=XXXXX
 
 # ---- USER CONFIG ----
-## Edit these so they match your paths for things
+## Edit these so they match your paths for things wooooooooo 🫠
 BASE_DIR=/scratch/alpine/beyo2625/laboul_all/laboul_trees/auto_pipeline
 FASTA_DIR=/scratch/alpine/beyo2625/laboul_all/laboul_trees/auto_pipeline/sco_all
 ALIGN_DIR=/scratch/alpine/beyo2625/laboul_all/laboul_trees/auto_pipeline/sco_align_all
 LOG_DIR=/scratch/alpine/beyo2625/laboul_all/laboul_trees/auto_pipeline/sco_align_all/loop_err_out
 # ---------------------
 
+## This is making a variable with all your sample names (i.e. fungi01, fungi02, fungi03 .... etc etc). 
 cd "$FASTA_DIR" || exit 1
 PALMATA=$(ls *.fasta | sed 's/\.fasta$//')
 
@@ -214,10 +263,10 @@ for PALPAL in $PALMATA; do
 
     cat > "$JOB_SCRIPT" <<EOF
 #!/bin/bash
-#SBATCH --account=ucb423_asc2
-#SBATCH --partition=amilan
-#SBATCH --qos=normal
-#SBATCH --time=04:00:00
+#SBATCH --account=xxxxx
+#SBATCH --partition=xxxxx
+#SBATCH --qos=xxxxx
+#SBATCH --time=12:00:00
 #SBATCH --nodes=1
 #SBATCH --mem=10G
 #SBATCH --ntasks=5
@@ -226,7 +275,7 @@ for PALPAL in $PALMATA; do
 #SBATCH --error=$LOG_DIR/${PALPAL}_muscle.err
 #SBATCH --output=$LOG_DIR/${PALPAL}_muscle.out
 #SBATCH --mail-type=ALL
-#SBATCH --mail-user=beyo2625@colorado.edu
+#SBATCH --mail-user=xxxxx
 
 module purge
 eval "\$(conda shell.bash hook)"
@@ -234,8 +283,8 @@ conda activate muscle_env
 
 cd $BASE_DIR
 muscle \\
-    -super5 sco_all/${PALPAL}.fasta \\
-    -output sco_align_all/${PALPAL}.align
+    -super5 $FASTA_DIR/${PALPAL}.fasta \\
+    -output $ALIGN_DIR/${PALPAL}.align
 EOF
 
     sbatch "$JOB_SCRIPT"
@@ -246,7 +295,7 @@ This will then create the same number of fasta files as in the `SCO_all` directo
 
 ## Step 4. Trimming Samples
 
-We want to clean the alignments we generated, and we will use `trimal` for this. This is a very quick and easy step so I will not go into this to much. Again, it will generate the same number of fasta files as in the `SCO_all` directory, and the `SCO_align_all` directory.  
+We want to clean the alignments we generated, and we will use `trimal` for this. This is a very quick and easy step so I will not go into this to much. So easy that you do not even have to submit a job (and and run on the login node hehehehhe). Again, it will generate the same number of fasta files as in the `SCO_all` directory, and the `SCO_align_all` directory.  
 
 ```
 mamba activate trimal_env ## activate the trimal environment
@@ -273,6 +322,8 @@ If you are running true SCO (i.e. SCO_all as we are doing in this tutorial) you 
 So for SCO that do not have all species present (i.e. you are using >95% SCO and thus there will be SCOs with < the total number of species included) you need to coplete them or when you concatenate it will create different sequence lengths and cause super whacky trees generated using `RAxML`.  
 
 I wrote the python script `complete_missing_species.py` that will do this for you, and print the ouput saying for each SCO what species are added. For each SCO, it identifies the length of the sequence (which, after trimming will be the same for all the sequences in the file) and then adds ---- padding sequences for the missing species (as they have non alignment).  
+
+The `species_file` for this step we generated when we ran `rename.py`. It is in the generated `analysis_list` directory that was made wehn you ran `rename.py` and it should be called `species_list.fa`.  
 
 ```
 ./complete_missing_species.py --help
