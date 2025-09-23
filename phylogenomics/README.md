@@ -370,7 +370,7 @@ cd /scratch/alpine/beyo2625/laboul_all/laboul_trees/auto_pipeline
 --missing_report analysis_lists/sco_all_missing_species.txt
 ```
 
-This gives the output of the following 
+This gives the output of the following.  
 
 ```
 .....
@@ -412,6 +412,8 @@ After that, the script checks everything looks good, and you can see we got the 
 ## Step 6. Concatenation of the SCOs
 
 The final step before tree generation is combining all the SCO for each species into one long sequence. I have again written a python script called `./combine_seqs.py` which does this for you, and runs some checks.  
+
+Again, the `--expected_file` is the ~species_list.fa` you generated in `rename.py` and was asaved to the `analysis_list` directory. 
 
 ```
 ./combine_seqs.py --help
