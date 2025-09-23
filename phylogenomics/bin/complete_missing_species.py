@@ -124,8 +124,20 @@ def process_files(species_file, input_dir, input_ext, output_dir, output_ext, li
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Fill missing species in orthogroup FASTA files with padded sequences."
+        description="Fill missing species in orthogroup FASTA files with padded sequences.",
+        formatter_class=argparse.RawTextHelpFormatter,
+        usage=(
+            "complete_missing_species.py\n"
+            "  --species_file SPECIES_FILE\n"
+            "  --input_dir INPUT_DIR\n"
+            "  [--input_ext INPUT_EXT]\n"
+            "  --output_dir OUTPUT_DIR\n"
+            "  [--output_ext OUTPUT_EXT]\n"
+            "  [--line_length LINE_LENGTH]\n"
+            "  [--missing_report MISSING_REPORT]"
+        )
     )
+
     parser.add_argument("--species_file", required=True,
                         help="File with expected species list (lines like >species)")
     parser.add_argument("--input_dir", required=True,
