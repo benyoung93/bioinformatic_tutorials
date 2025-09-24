@@ -16,33 +16,42 @@ def process_proteinortho(tsv_file, fasta_dir, extension=".faa", output_dir="."):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Read header lines once
+    with open(tsv_file) as fin:
+        header_lines = [line for line in fin if line.startswith("#")]
+
     for thresh in thresholds:
         cutoff = math.ceil(num_fastas * (thresh / 100.0))
-
         out_file = output_dir / (f"SCO_all.txt" if thresh == 100 else f"SCO_great{thresh}.txt")
         count = 0
 
-        with open(tsv_file) as fin, open(out_file, "w") as fout:
-            for line in fin:
-                if line.startswith("#"):  # skip comments/header
-                    continue
-                parts = line.strip().split("\t")
-                try:
-                    n_all = int(parts[0])
-                    n_have = int(parts[1])
-                except ValueError:
-                    continue  # skip malformed lines
+        with open(out_file, "w") as fout:
+            # Write header first
+            for header in header_lines:
+                fout.write(header)
 
-                if thresh == 100:
-                    if n_all == num_fastas and n_have == num_fastas:
-                        fout.write(line)
-                        count += 1
-                else:
-                    if n_all == n_have and n_all >= cutoff:
-                        fout.write(line)
-                        count += 1
+            # Process data lines
+            with open(tsv_file) as fin:
+                for line in fin:
+                    if line.startswith("#"):
+                        continue  # already written header
+                    parts = line.strip().split("\t")
+                    try:
+                        n_all = int(parts[0])
+                        n_have = int(parts[1])
+                    except ValueError:
+                        continue  # skip malformed lines
 
-        # 👇 new: print cutoff info clearly
+                    if thresh == 100:
+                        if n_all == num_fastas and n_have == num_fastas:
+                            fout.write(line)
+                            count += 1
+                    else:
+                        if n_all == n_have and n_all >= cutoff:
+                            fout.write(line)
+                            count += 1
+
+        # Print summary for this threshold
         if thresh == 100:
             print(f"{thresh}% ({num_fastas} species): {count} SCOs written to {out_file}")
         else:
