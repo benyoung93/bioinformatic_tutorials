@@ -87,7 +87,109 @@ modified_proteomes
 
 Then we *grab* the SCOs from the results
 
+```
+cd /scratch/alpine/beyo2625/species_tree_tut
+mamba activate proteinortho_env
 
+proteinortho_grab_proteins.pl \
+-exact \
+-cpus=5 \
+-tofiles=/scratch/alpine/beyo2625/species_tree_tut/sco_all \
+prot_ortho/SCO_all.txt \
+modified_proteomes/*.fasta
+```
+
+Then we align the SCOs
+
+```
+#!/bin/bash
+#SBATCH --time=00:10:00
+#SBATCH --account=XXXXX
+#SBATCH --partition=XXXXX
+#SBATCH --qos=XXXXX
+#SBATCH --nodes=1
+#SBATCH --mem=2G
+#SBATCH --job-name=muscle
+#SBATCH --error=/scratch/alpine/beyo2625/species_tree_tut/sco_align_all/loop_err_out/muscle.err
+#SBATCH --output=/scratch/alpine/beyo2625/species_tree_tut/sco_align_all/loop_err_out/muscle.out
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=XXXXX
+
+# ---- USER CONFIG ----
+BASE_DIR=/scratch/alpine/beyo2625/species_tree_tut
+FASTA_DIR=/scratch/alpine/beyo2625/species_tree_tut/sco_all
+ALIGN_DIR=/scratch/alpine/beyo2625/species_tree_tut/sco_align_all
+LOG_DIR=/scratch/alpine/beyo2625/species_tree_tut/sco_align_all/loop_err_out
+# ---------------------
+
+cd "$FASTA_DIR" || exit 1
+PALMATA=$(ls *.fasta | sed 's/\.fasta$//')
+
+echo "Files going through muscle5 alignment:"
+echo "$PALMATA"
+
+for PALPAL in $PALMATA; do
+    JOB_SCRIPT="$LOG_DIR/${PALPAL}_muscle.sh"
+
+    cat > "$JOB_SCRIPT" <<EOF
+#!/bin/bash
+#SBATCH --account=XXXXX
+#SBATCH --partition=XXXXX
+#SBATCH --qos=XXXXX
+#SBATCH --time=06:00:00
+#SBATCH --nodes=1
+#SBATCH --mem=10G
+#SBATCH --ntasks=5
+#SBATCH --cpus-per-task=2
+#SBATCH --job-name=${PALPAL}_muscle
+#SBATCH --error=$LOG_DIR/${PALPAL}_muscle.err
+#SBATCH --output=$LOG_DIR/${PALPAL}_muscle.out
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=XXXXX
+
+module purge
+eval "\$(conda shell.bash hook)"
+conda activate muscle_env
+
+cd $BASE_DIR
+muscle \\
+    -super5 $FASTA_DIR/${PALPAL}.fasta \\
+    -output $ALIGN_DIR/${PALPAL}.align
+EOF
+
+    sbatch "$JOB_SCRIPT"
+done
+```
+
+Next we trim them 
+
+```
+mamba activate trimal_env
+
+cd /scratch/alpine/beyo2625/species_tree_tut/sco_align_all
+PALMATA=$(ls *.align | sed 's/\.align$//')
+
+cd /scratch/alpine/beyo2625/species_tree_tut
+for PALPAL in $PALMATA
+do
+trimal \
+-in sco_align_all/"$PALPAL".align \
+-out sco_clean_all/"$PALPAL".trimmed \
+-gappyout
+done
+```
+
+And finally we remove the `_nn|` (with nn being the gene number) from SCOs so we can concatenate by species and run the rest of the pipeline. Yay 🎉. 
+
+```
+cd /scratch/alpine/beyo2625/species_tree_tut
+mkdir sco_all_clean_ngn
+cd sco_clean_all
+for f in *.trimmed; do
+    base=$(basename "$f")
+    sed 's/_\([0-9]\+\)|//' "$f" > "../sco_all_clean_ngn/$base"
+done
+```
 
 ## Step 2. Generating Concatenated Alignment and Partition File 
 
