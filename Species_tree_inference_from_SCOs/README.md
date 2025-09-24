@@ -13,6 +13,9 @@ Finally, we’ll look at quartet support values (q1, q2, q3), which tell us how 
 
 ## Step 1. Generating Cleaned and Aligned Single Copy Orthologs  
 
+This step here is broadly the same as Steps xx - xx in the Phylogenomic tutorial. As such, I do not go into detail here but you can refer to other tutorial if you want more information. 
+
+
 
 ## Step 2. Generating Concatenated Alignment and Partition File 
 
