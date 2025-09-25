@@ -307,6 +307,26 @@ Other options here you can check the `IQTree3` documentation, but options could 
 
 ## Step 4. Adding Best Models to Partition File
 
+The first step here is to extract the best model from each gene tree generated in the previous step. I have written `select_model.py` which autoimates this for you. Remember, you can run `select_model.py --help` to check what the inputs, outputs and other flags are doing.  
+
+```
+cd /scratch/alpine/beyo2625/species_tree_tut
+
+## g90
+bin/select_model.py \
+-i iqtree_genetree_all \
+-o iqtree_all/best_models.tsv \
+-crit AIC
+```
+```
+✅ Wrote 69 results to iqtree_all/best_models.tsv
+```
+
+Now we have that, we need to merge it with the partition file so that the partition file is showing us 
+* Location of each gene for each species
+* Model to use for each gene for downstream steps.
+
+One little hiccup is that in the partition file the orthogroups are called `SCOall.txt.OrthoGroupxx.trimmed` whereas in the best_models they are called `SCOall.txt.OrthoGroupxx`. We obviously need these to match 
 
 ## Step 5. Collapsing Poorly Supported Branches
 
