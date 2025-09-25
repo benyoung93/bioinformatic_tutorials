@@ -13,8 +13,33 @@ Finally, we’ll look at quartet support values (q1, q2, q3), which tell us how 
 ## Step 0. General Setup 
 
 All my written programs are in the bin directory of this tutorial page.  
-Additionally, I have provided the conda environment yaml files for programs I used as I know my written programs work with these. 
+Additionally, I have provided the conda environment yaml files for programs I used as I know my written programs work with these.  
 Finally, below is the general directroy layout (identified using `tree -d`) for this analysis. You are welcome to use a similar makeup, or rename, whatever floats your ⛵️.  
+
+```
+.
+├── analysis_lists
+├── astral_all
+├── bin
+├── collapsed_trees
+├── iqtree_all
+├── iqtree_all_reest
+├── iqtree_genetree_all ## There is a directory for every single SCO you using, I have cut out most for viewing ease
+│   ├── loop_err_out
+│   ├── SCOall.txt.OrthoGroup0
+│   ├── SCOall.txt.OrthoGroup1
+│   ├── SCOall.txt.OrthoGroup10
+    ...............
+│   └── SCOall.txt.OrthoGroupNN
+├── modified_proteomes
+├── proteomes
+├── prot_ortho
+├── sco_align_all
+│   └── loop_err_out
+├── sco_all
+├── sco_all_clean_ngn
+└── sco_clean_all
+```
 
 
 ## Step 1. Generating Cleaned and Aligned Single Copy Orthologs  
