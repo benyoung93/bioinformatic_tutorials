@@ -17,6 +17,8 @@ Additionally, I have provided the conda environment yaml files for programs I us
 Finally, below is the general directroy layout (identified using `tree -d`) for this analysis. You are welcome to use a similar makeup, or rename, whatever floats your ⛵️.  
 
 ```
+cd /scratch/alpine/beyo2625/species_tree_tut # root project working directory
+tree -d
 .
 ├── analysis_lists
 ├── astral_all
