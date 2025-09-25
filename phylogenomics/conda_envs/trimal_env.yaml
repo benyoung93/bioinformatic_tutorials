@@ -10,4 +10,3 @@ dependencies:
   - libgomp=14.2.0=h767d61c_2
   - libstdcxx=14.2.0=h8f9b012_2
   - trimal=1.5.0=h9948957_2
-prefix: /projects/beyo2625/miniforge3/envs/trimal_env
