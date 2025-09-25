@@ -10,4 +10,3 @@ dependencies:
   - libgomp=14.2.0=h767d61c_2
   - libstdcxx=14.2.0=h8f9b012_2
   - muscle=5.3=h4ac6f70_0
-prefix: /projects/beyo2625/miniforge3/envs/muscle_env
