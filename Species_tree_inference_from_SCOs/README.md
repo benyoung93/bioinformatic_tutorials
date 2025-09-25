@@ -741,7 +741,7 @@ You can see from this that we have
 
 While we have done alot of this in `r`, this is now where I would take it into Adobe Illustrator to make the final scale edits and moving of the pies. You can do this in `r` but it is not that easy. 
 
-If exporting to Illustrator, use the following pdf export as some of the `treeio` options dont work with the normal 
+If exporting to Illustrator, use the following pdf export as some of the `treeio` options dont work with the normal pdf export ☺️. 
 
 ```{r saving as high quality pdf g90 astral tree, include = F}
 cairo_pdf("~/Desktop/iqtree_all_root.pdf", 
