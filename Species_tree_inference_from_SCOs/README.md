@@ -309,6 +309,8 @@ Other options here you can check the `IQTree3` documentation, but options could 
 
 The first step here is to extract the best model from each gene tree generated in the previous step. I have written `select_model.py` which autoimates this for you. Remember, you can run `select_model.py --help` to check what the inputs, outputs and other flags are doing.  
 
+An important note here is that the `best_models.tsv` and partition file SCOs **MUST** match. The `select_model.py` has a suffix flag in it where you can select a suffix to match the partition file. Here, our partition file SCOs (file is the `.nex.nex` in `iqtree_all`) look like `SCOall.txt.OrthoGroupxx.trimmed` whereas if you ran the best_models with no suffix `SCOall.txt.OrthoGroupxx` would be included. Thus, including the `--suffix .trimmed` in the script below we match everything up. 
+
 ```
 cd /scratch/alpine/beyo2625/species_tree_tut
 
@@ -322,19 +324,147 @@ bin/select_model.py \
 ✅ Wrote 69 results to iqtree_all/best_models.tsv
 ```
 
-Now we have that, we need to merge it with the partition file so that the partition file is showing us 
+Now we have that and everything matches, we need to merge it with the partition file so that the partition file is showing us 
 * Location of each gene for each species
 * Model to use for each gene for downstream steps.
 
-One little hiccup is that in the partition file the orthogroups are called `SCOall.txt.OrthoGroupxx.trimmed` whereas in the best_models they are called `SCOall.txt.OrthoGroupxx`. We obviously need these to match 
+I have again written a python script (`update_nexus.py`) which will do this for you. 
+
+```
+cd /scratch/alpine/beyo2625/species_tree_tut 
+
+bin/update_nexus.py \
+--input-nexus iqtree_all/alignments_concat.nex.nex \
+--models iqtree_all/best_models.tsv \
+--output-nexus iqtree_all/alignments_concat_withmods.nex
+```
+```
+✅ Loaded 69 models from iqtree_all/best_models.tsv
+✅ New NEXUS with models written to iqtree_all/alignments_concat_withmods.nex
+```
+
+Okikoke, and now we have that we are ready to move on to the next step. 
 
 ## Step 5. Collapsing Poorly Supported Branches
 
+Now we collapse the poorly supported branches in all of the generated gene trees in  **Step 3**. 
+
+This is pretty straightforward and you can just run a simple for loop to do this. 
+
+```
+cd /scratch/alpine/beyo2625/species_tree_tut
+mamba activate newickutils_env
+
+for tree in iqtree_genetree_all/SCO*/*.treefile; do
+    filename=$(basename "$tree")
+    echo "Collapsing support ≤10 in $filename"
+    nw_ed "$tree" 'i & b<=10' o > collapsed_trees/"${filename%.treefile}.collapsed.tree"
+done
+```
+```
+....
+Collapsing support ≤10 in SCOall.txt.OrthoGroup6.treefile
+Collapsing support ≤10 in SCOall.txt.OrthoGroup7.treefile
+Collapsing support ≤10 in SCOall.txt.OrthoGroup8.treefile
+Collapsing support ≤10 in SCOall.txt.OrthoGroup9.treefile
+```
+
+Okay woinderful, so now we have our individual gene trees with low support collapsed. We can  now build the species tree using these. 
 
 ## Step 6. Building the Species Tree
 
+The first step in generating our species tree, using `astral`, is to combine all the individual gene trees into one file. 
+
+```
+cd /scratch/alpine/beyo2625/species_tree_tut
+cat collapsed_trees/*.collapsed.tree > astral_all/gene_trees_all_SCO.tree
+```
+
+And now we can run `astral` to generate the species tree. 
+
+```
+#!/bin/bash
+#SBATCH --time=24:00:00
+#SBATCH --qos=XXXXX
+#SBATCH --partition=XXXXX
+#SBATCH --account=XXXXX
+#SBATCH --nodes=1
+#SBATCH --mem=20G
+#SBATCH --job-name=astral_all
+#SBATCH --error=/scratch/alpine/beyo2625/species_tree_tut/astral_all/aster.err
+#SBATCH --output=/scratch/alpine/beyo2625/species_tree_tut/astral_all/aster.out
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=XXXXX
+#SBATCH --ntasks=15
+#SBATCH --cpus-per-task=2
+
+module purge 
+eval "$(conda shell.bash hook)"
+conda activate aster_env
+
+cd /scratch/alpine/beyo2625/species_tree_tut/astral_all
+
+astral4 \
+-i gene_trees_all_SCO.tree \
+-o species_tree_all.nwk \
+-u 3 \
+-w 1
+```
 
 ## Step 7. Quartet Support Analysis
 
+And now finally we get to bring everything together and rereun `IQTree3` with 
+* `astral` species tree (Step 6). 
+* original concatenated genes for each species (Step 2).
+* Updated partition file (Step 3 - 4).
+
+```
+#!/bin/bash
+#SBATCH --time=24:00:00
+#SBATCH --qos=blanca-qsmicrobes
+#SBATCH --partition=blanca-qsmicrobes
+#SBATCH --account=blanca-qsmicrobes
+#SBATCH --nodes=1
+#SBATCH --mem=30G
+#SBATCH --job-name=reestimate_tree
+#SBATCH --error=/scratch/alpine/beyo2625/species_tree_tut/iqtree_all_reest/iqtree_reest.err
+#SBATCH --output=/scratch/alpine/beyo2625/species_tree_tut/iqtree_all_reest/iqtree_reest.out
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=beyo2625@colorado.edu
+#SBATCH --ntasks=10
+#SBATCH --cpus-per-task=2
+
+module purge 
+eval "$(conda shell.bash hook)"
+conda activate iqtree_env
+
+cd /scratch/alpine/beyo2625/species_tree_tut/iqtree_all_reest
+iqtree3 \
+-s ../iqtree_all/alignments_concat.nex \
+-p ../iqtree_all/alignments_concat_withmods.nex \
+-te ../astral_all/species_tree_all.nwk \
+--prefix sco_all_reest_root \
+--seqtype AA \
+-o sample11,sample59,sample66 \
+--seed 73 \
+-T AUTO \
+-nstop 25
+
+iqtree3 \
+-s ../iqtree_all/alignments_concat.nex \
+-p ../iqtree_all/alignments_concat_withmods.nex \
+-te ../astral_all/species_tree_all.nwk \
+--prefix sco_all_reest \
+--seqtype AA \
+--seed 73 \
+-T AUTO \
+-nstop 25
+```
+
+So here we rerun `IQTree3` twice. The first run is with rooting, the second without. The rooting can often fail (especially with SCO>xx% species) so you would just go for the second option with no rooting. Once this runs you are all done and ready to go into your favourite tree visualisation tool. 
+
+Below I show you how to do this in `r` using `tidytree` and `treeio` as that is my preference. 
 
 ## Step 8. Visualising Tree with Quartets
+
+
