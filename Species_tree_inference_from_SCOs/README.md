@@ -494,4 +494,261 @@ Below I show you how to do this in `r` using `tidytree` and `treeio` as that is 
 
 ## Step 8. Visualising Tree with Quartets
 
+So I do this in `r` and I will give the basic high level code to generate your tree with the quartet pie charts included. 
+
+```{r library loading, include = F}
+library(tidyverse)
+library(ggtree)
+library(treeio)
+library(tidytree)
+library(ggtreeExtra)
+library(ggimage)
+sessionInfo()
+```
+
+It is a little weird for the `tidytree::collapse` function. You need to do the below chunk to make it work. 
+
+```{r making collapse work, include = F}
+nodeid.tbl_tree <- utils::getFromNamespace("nodeid.tbl_tree", "tidytree")
+rootnode.tbl_tree <- utils::getFromNamespace("rootnode.tbl_tree", "tidytree")
+offspring.tbl_tree <- utils::getFromNamespace("offspring.tbl_tree", "tidytree")
+offspring.tbl_tree_item <- utils::getFromNamespace(".offspring.tbl_tree_item", "tidytree")
+child.tbl_tree <- utils::getFromNamespace("child.tbl_tree", "tidytree")
+parent.tbl_tree <- utils::getFromNamespace("parent.tbl_tree", "tidytree")
+```
+
+Okay lovely so first we read in out tree data that we made in **Step 7**. 
+
+```{r reading in the iqtree astral results, include = F}
+treeio::read.newick(file = "~/Desktop/iqtree_all_reest/sco_all_reest_root.treefile") -> astral_root
+```
+
+Then, you can merge it with your metadata. Remember, we renamed everything toi `sample01 sample02 ..... samplenn` and this is not very useful. Using the `analysis_lists/name_mapping.tsv` (generated in **Step 1**) you can generate a metadata table that matches the root labels (`sample01 sample02 ..... samplenn`) with species names, locations, treatments etc etc (the world is your oyster here). 
+
+```{r importing metadata and annotating iqtree data, include = F}
+## read in the metadata
+read.csv(file = "~/Desktop/tree_metadata.csv") %>% ## metadata with the name_mapping.tsv
+  mutate(across(where(is.character), ~na_if(., ""))) %>% 
+  mutate(Genus_species_good = str_replace_all(Genus_species, "_", " ")) %>% 
+  mutate(tiplabel = paste0(sample, " | ", Genus_species_good, " | ", Location)) -> tree_md_gp
+
+## making a variable of just the tip sample names
+astral_root %>% 
+  as_tibble() %>% View()
+  filter(str_detect(label, "^[A-Za-z]")) %>%
+  dplyr::select(label) -> samples_all
+
+## joining the tree data with the metadata using the sample names as a filter
+## do this as you may have more stuff in metadata than in the tree. 
+astral_root %>% 
+  as_tibble() %>%
+  full_join(tree_md_gp %>% 
+              dplyr::filter(sample %in% samples_all$label), 
+            join_by(label == sample)) %>%
+  as.treedata() -> astral_root
+```
+
+Now, we need to extract the Q1, Q2, and Q3 data from the treefile. If you do `astral_root %>% as.tibble() %>% View()` you can see that if you scroll down there is **ALOT** of information saved. We only want the Qxx values but all that other info is there if you need it. 
+
+```{r extracting the q values and making the pie data object, include = F}
+astral_root %>%
+  as_tibble() %>%
+  mutate(
+    q1 = str_extract(label, "(?<=q1=)[0-9eE\\.\\-]+") %>% as.numeric(),
+    q2 = str_extract(label, "(?<=q2=)[0-9eE\\.\\-]+") %>% as.numeric(),
+    q3 = str_extract(label, "(?<=q3=)[0-9eE\\.\\-]+") %>% as.numeric()
+  ) %>%
+  filter(!is.na(q1) & !is.na(q2) & !is.na(q3)) %>%
+  select(node, q1, q2, q3) -> pie_data
+```
+
+Now we have the quartet data for the pies, you use the `nodepie` function to make the pie charts for the tree, and then can also assign pretty colours. 
+
+```{r using nodepie to make for plotting, include = F}
+pies <- nodepie(pie_data, 
+                cols = 2:4, 
+                alpha = 0.9)
+cols <- c("q1" = "steelblue", "q2" = "orange", "q3" = "green")  # your chosen colors
+pies <- lapply(pies, function(g) g + scale_fill_manual(values = cols))
+```
+
+Then, you are ready to plot yay. Note here I have stuck with `samplenn` as the tip labels as this data is not published yet (once it is I will add the image in). 
+
+```{r viewing g90 no root tree, fig.width=10, fig.height=14, echo = F, results='hide'}
+ggtree(astral_root, ladderize = T, size = 0.5) +
+  geom_tiplab(aes(label = label, 
+                  fontface = "italic"),
+              size = 3,
+              align = F) +
+  geom_inset(pies, 
+             width = 0.05, 
+             height = 0.05) +
+  theme(plot.margin = margin(1, 
+                             7, 
+                             1,
+                             1, 
+                             "cm")) +
+  geom_rootedge(rootedge = 0.005) +
+  coord_cartesian(clip = "off") +
+  geom_treescale(
+    fontsize = 3,
+    x = 0.08,
+    linesize = 1,
+    offset = 1
+  ) +  ## N143 Europe
+  geom_cladelab(
+    node = 143,
+    label = "Europe",
+    fontsize = 6,
+    align = F,
+    offset = 0.05,
+    offset.text = 0.001,
+    textcolor = 'black',
+    barcolor = 'darkgrey',
+    family = "Times"
+  ) +
+  geom_hilight(
+    node = 143,
+    fill = "steelblue2",
+    type = "gradient",
+    gradient.direction = 'rt',
+    alpha = .3,
+    to.bottom = T
+  ) + ## N136 Asia
+  geom_cladelab(
+    node = 136,
+    label = "Asia",
+    fontsize = 6,
+    align = F,
+    offset = 0.055,
+    offset.text = 0.001,
+    textcolor = 'black',
+    barcolor = 'darkgrey',
+    family = "Times"
+  ) +
+  geom_hilight(
+    node = 136,
+    fill = "goldenrod2",
+    type = "gradient",
+    gradient.direction = 'rt',
+    alpha = .3,
+    to.bottom = T
+  ) + ## N133 Europe
+  geom_cladelab(
+    node = 133,
+    label = "Europe",
+    fontsize = 6,
+    align = F,
+    offset = 0.05,
+    offset.text = 0.001,
+    textcolor = 'black',
+    barcolor = 'darkgrey',
+    family = "Times"
+  ) +
+  geom_hilight(
+    node = 133,
+    fill = "steelblue2",
+    type = "gradient",
+    gradient.direction = 'rt',
+    alpha = .3,
+    to.bottom = T
+  ) + ## N136 Europe
+  geom_cladelab(
+    node = 156,
+    label = "Europe",
+    fontsize = 6,
+    align = F,
+    offset = 0.05,
+    offset.text = 0.001,
+    textcolor = 'black',
+    barcolor = 'darkgrey',
+    family = "Times"
+  ) +
+  geom_hilight(
+    node = 156,
+    fill = "steelblue2",
+    type = "gradient",
+    gradient.direction = 'rt',
+    alpha = .3,
+    to.bottom = T
+  ) + ## n156 Europe
+  geom_cladelab(
+    node = 157,
+    label = "Europe",
+    fontsize = 6,
+    align = F,
+    offset = 0.05,
+    offset.text = 0.001,
+    textcolor = 'black',
+    barcolor = 'darkgrey',
+    family = "Times"
+  ) +
+  geom_hilight(
+    node = 157,
+    fill = "steelblue2",
+    type = "gradient",
+    gradient.direction = 'rt',
+    alpha = .3,
+    to.bottom = T
+  ) + ## N107 North America
+  geom_cladelab(
+    node = 107,
+    label = "North America",
+    fontsize = 6,
+    align = F,
+    offset = 0.06,
+    offset.text = 0.001,
+    textcolor = 'black',
+    barcolor = 'darkgrey',
+    family = "Times"
+  ) +
+  geom_hilight(
+    node = 107,
+    fill = "forestgreen",
+    type = "gradient",
+    gradient.direction = 'rt',
+    alpha = .3,
+    to.bottom = T
+  ) + ## N85 North Ameerica
+  geom_cladelab(
+    node = 85,
+    label = "North America",
+    fontsize = 6,
+    align = F,
+    offset = 0.06,
+    offset.text = 0.001,
+    textcolor = 'black',
+    barcolor = 'darkgrey',
+    family = "Times"
+  ) +
+  geom_hilight(
+    node = 85,
+    fill = "forestgreen",
+    type = "gradient",
+    gradient.direction = 'rt',
+    alpha = .3,
+    to.bottom = T
+  ) -> iqtree_all
+iqtree_all
+```
+
+PUT IMAGE IN ONCE PAPER ACCEPTED 
+
+You can see from this that we have 
+* pies at each node
+* nice tip labels with sample number, species, country
+* higher level continent colouring.
+
+While we have done alot of this in `r`, this is now where I would take it into Adobe Illustrator to make the final scale edits and moving of the pies. You can do this in `r` but it is not that easy. 
+
+If exporting to Illustrator, use the following pdf export as some of the `treeio` options dont work with the normal 
+
+```{r saving as high quality pdf g90 astral tree, include = F}
+cairo_pdf("~/Desktop/iqtree_all_root.pdf", 
+    width = 10, 
+    height = 15)
+iqtree_all
+dev.off()
+```
+
 
