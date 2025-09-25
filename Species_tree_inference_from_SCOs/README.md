@@ -193,8 +193,116 @@ done
 
 ## Step 2. Generating Concatenated Alignment and Partition File 
 
+We will be using `IQTree3` for alot of the remainder of this tutorial/pipeline. The first step we do is use `iqtree3` to generatea concatenated alignment and partition file
+
+```
+mamba activate iqtree_env
+
+cd /scratch/alpine/beyo2625/species_tree_tut/iqtree_all
+
+iqtree3 \
+-p ../sco_all_clean_ngn/ \
+--out-aln alignments_concat.nex
+```
+```
+Alignment was printed to alignments_concat.nex
+Partition information was printed to alignments_concat.nex.nex
+Partition information in Raxml format was printed to alignments_concat.nex.partitions
+```
+
+These will not be used till later on in the pipeline, but I like to generate them early.  
+
+There will also be two files present in our project directory as we ran this in the terminal and not as a job, these can just be `mv` to the `iqtree_all` directory to maintain organisation.  
 
 ## Step 3. Identyfying the Best Model for each Gene Tree and Generating Gene Trees
+
+Now we identify the best model for each SCO we are using (in our case for each of the 69 SCO between all species) and then generate the subsequent gene tree.  
+
+There are **alot** of different ways to do this, but I have settled on using `IQTree3` as it does both of these steps in one command which is super nice.  
+
+```
+#!/bin/bash
+#SBATCH --time=00:10:00
+#SBATCH --account=xxxxx
+#SBATCH --partition=xxxxx
+#SBATCH --qos=xxxxx
+#SBATCH --nodes=1
+#SBATCH --mem=2G
+#SBATCH --job-name=iqtree_model_tree
+#SBATCH --error=/scratch/alpine/beyo2625/species_tree_tut/iqtree_genetree_all/loop_err_out/mod_tree.err
+#SBATCH --output=/scratch/alpine/beyo2625/species_tree_tut/iqtree_genetree_all/loop_err_out/mod_tree.out
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=xxxxx
+
+# ---- USER CONFIG ----
+BASE_DIR=/scratch/alpine/beyo2625/species_tree_tut
+FASTA_DIR=/scratch/alpine/beyo2625/species_tree_tut/sco_all_clean_ngn
+OUTPUT_DIR=/scratch/alpine/beyo2625/species_tree_tut/iqtree_genetree_all
+LOG_DIR=/scratch/alpine/beyo2625/species_tree_tut/iqtree_genetree_all/iqtree_genetree_all/loop_err_out
+
+# ---------------------
+
+cd "$FASTA_DIR" || exit 1
+PALMATA=$(ls *.trimmed | sed 's/\.trimmed$//')
+
+echo "Files going through iqtree3 analysis:"
+echo "$PALMATA"
+
+for PALPAL in $PALMATA; do
+    JOB_SCRIPT="$LOG_DIR/${PALPAL}_iqtree.sh"
+
+    cat > "$JOB_SCRIPT" <<EOF
+#!/bin/bash
+#SBATCH --account=xxxxx
+#SBATCH --partition=xxxxx
+#SBATCH --qos=xxxxx
+#SBATCH --time=24:00:00
+#SBATCH --nodes=1
+#SBATCH --mem=20G
+#SBATCH --ntasks=5
+#SBATCH --cpus-per-task=2
+#SBATCH --job-name=${PALPAL}_iqtree
+#SBATCH --error=$LOG_DIR/${PALPAL}_iqtree.err
+#SBATCH --output=$LOG_DIR/${PALPAL}_iqtree.out
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=xxxxx
+
+module purge
+eval "\$(conda shell.bash hook)"
+conda activate iqtree_env
+
+cd $OUTPUT_DIR
+mkdir -p ${PALPAL}
+cd ${PALPAL}
+
+iqtree3 \\
+    -s $FASTA_DIR/${PALPAL}.trimmed \\
+    -mset LG,WAG,JTT,Dayhoff \\
+    -merit AIC \\
+    --prefix ${PALPAL} \\
+    -B 1000 \\
+    -alrt 1000 \\
+    -nt AUTO
+EOF
+
+    sbatch "$JOB_SCRIPT"
+done
+```
+There are a few things to note from this script. 
+
+For the `-mset` flag I restricted it to specific inputs. This is because if you use `AUTO` selection in `IQTree3` it chooses the best models based solely on maths, and these may not be approproate for your organism. For example if I kept the `auto` flag here it chooses viral and HIV models which are not appropriate for fungi. Depnding on your organism you will need to carfully use the `IQTree` documentation to pick the `-mset` values you want to use, or follow how others have done it in your organisms in the future.  
+
+* LG -> a modern empirical model built from a large dataset of globular proteins and generally performs best for fungi.
+* WAG -> an earlier empirical model derived from a wide range of proteins and is a solid, widely used alternative to LG.
+* JTT -> a classic substitution model from the early 1990s based on a smaller dataset and often used as a baseline
+* Dayhoff -> the earliest protein model, based on very limited data, and is mostly retained for historical comparison.
+
+For the `-merit` I picked **AIC** which stands for Akaike Information Criterion. From some general reading and googling this is used most commonly as it 
+* balances model fit versus complexity
+* penalises overfitting but not as harsh as others
+* good for predicitive accuracy and not worried about over complexity.
+
+Other options here you can check the `IQTree3` documentation, but options could be **BIC**, **AICc**, or **DTL**.  
 
 
 ## Step 4. Adding Best Models to Partition File
