@@ -448,16 +448,16 @@ And now finally we get to bring everything together and rereun `IQTree3` with
 ```
 #!/bin/bash
 #SBATCH --time=24:00:00
-#SBATCH --qos=blanca-qsmicrobes
-#SBATCH --partition=blanca-qsmicrobes
-#SBATCH --account=blanca-qsmicrobes
+#SBATCH --qos=XXXXX
+#SBATCH --partition=XXXXX
+#SBATCH --account=XXXXX
 #SBATCH --nodes=1
 #SBATCH --mem=30G
 #SBATCH --job-name=reestimate_tree
 #SBATCH --error=/scratch/alpine/beyo2625/species_tree_tut/iqtree_all_reest/iqtree_reest.err
 #SBATCH --output=/scratch/alpine/beyo2625/species_tree_tut/iqtree_all_reest/iqtree_reest.out
 #SBATCH --mail-type=ALL
-#SBATCH --mail-user=beyo2625@colorado.edu
+#SBATCH --mail-user=XXXXX
 #SBATCH --ntasks=10
 #SBATCH --cpus-per-task=2
 
