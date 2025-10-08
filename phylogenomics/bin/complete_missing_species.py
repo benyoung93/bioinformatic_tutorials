@@ -95,7 +95,7 @@ def process_files(species_file, input_dir, input_ext, output_dir, output_ext, li
         seqs = get_sequences(orthogroup)
 
         # Extract species names (strip after first "_")
-        existing_species = {h.split("_", 1)[0] for h in seqs}
+        existing_species = {h.rsplit("_", 1)[0] for h in seqs}
 
         # Find missing species
         missing_species = [sp for sp in species_list if sp not in existing_species]
