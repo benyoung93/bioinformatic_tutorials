@@ -31,7 +31,7 @@ def concatenate_sequences(expected, ortholog_files):
 
                     # header like >species_number|
                     header = line[1:]
-                    current_species = header.split("_", 1)[0]
+                    current_species = header.rsplit("_", 1)[0]
                     current_sequence = []
                 else:
                     if current_species:
